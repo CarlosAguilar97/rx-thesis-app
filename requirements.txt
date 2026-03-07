@@ -3,7 +3,7 @@ uvicorn[standard]
 python-multipart
 pydantic
 python-dotenv
-libsql-client
+libsql
 torch
 torchvision
 opencv-python
