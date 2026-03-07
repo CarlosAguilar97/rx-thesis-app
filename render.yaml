@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: rx-thesis-app
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.13
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: OUTPUTS_DIR
+        value: outputs_infer
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false

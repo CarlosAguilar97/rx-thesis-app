@@ -1,0 +1,10 @@
+.env
+uploads/
+outputs_infer/
+__pycache__/
+*.pyc
+*.pth
+*.pt
+*.log
+.vscode/
+.idea/

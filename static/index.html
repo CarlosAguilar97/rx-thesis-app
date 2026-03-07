@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RX Tórax • Apoyo Diagnóstico</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+  <style>
+    .card { border: 1px solid hsl(var(--bc) / 0.08); }
+    .soft-shadow { box-shadow: 0 8px 30px rgba(0,0,0,0.06); }
+  </style>
+</head>
+
+<body class="min-h-screen bg-base-200">
+
+  <header class="sticky top-0 z-30 bg-base-100/80 backdrop-blur border-b border-base-300">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-primary/10 grid place-items-center">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-semibold leading-tight">Apoyo Diagnóstico • RX de Tórax</h1>
+          <p class="text-xs sm:text-sm opacity-70 leading-tight">Resultados generados por IA como apoyo clínico</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6 space-y-4">
+
+    <section class="card bg-base-100 rounded-2xl soft-shadow">
+      <div class="card-body gap-4">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="card-title text-lg">Cargar radiografía</h2>
+            <p class="text-sm opacity-70">
+              Sube una imagen en formato <span class="font-medium">PNG/JPG</span>. El análisis y guardado se ejecutan automáticamente.
+            </p>
+          </div>
+          <span class="badge badge-primary badge-outline">v0.1</span>
+        </div>
+
+        <div class="rounded-2xl border border-base-300 bg-base-200/60 p-4 sm:p-6">
+          <div class="flex flex-col items-center gap-2 text-center">
+            <div class="w-12 h-12 rounded-2xl bg-base-100 grid place-items-center border border-base-300">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M7 10l5-5 5 5M12 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M5 19h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+
+            <p class="font-semibold">Arrastra y suelta tu archivo aquí</p>
+            <p class="text-sm opacity-70">o selecciónalo desde tu dispositivo</p>
+
+            <input id="fileInput" type="file" accept=".png,.jpg,.jpeg" class="file-input file-input-bordered w-full max-w-lg" />
+
+            <div class="pt-2 w-full max-w-lg">
+              <div class="flex items-center justify-between text-xs opacity-70">
+                <span>Formatos: PNG, JPG</span>
+                <span>Tamaño recomendado: ≥ 1024px</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+  <label class="label">
+    <span class="label-text">Descripción original de la radiografía</span>
+  </label>
+  <textarea
+    id="originalDescription"
+    name="originalDescription"
+    class="textarea textarea-bordered w-full h-28"
+    placeholder="Escriba la descripción original o hallazgos observados..." 
+    required
+  ></textarea>
+</div>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button onclick="analizarImagen()" class="btn btn-primary flex-1">Analizar</button>
+          <button onclick="limpiarVista()" class="btn btn-outline flex-1">Limpiar</button>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <span id="estadoSistema" class="badge badge-ghost">Estado: esperando imagen</span>
+          <span class="badge badge-outline">Tiempo estimado: ~1–3s</span>
+        </div>
+
+        <div class="alert rounded-2xl">
+          <span class="text-sm">
+            Nota: Los resultados son probabilísticos y deben interpretarse junto a la evaluación clínica.
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+      <div class="lg:col-span-6 card bg-base-100 rounded-2xl soft-shadow">
+        <div class="card-body gap-3">
+          <div class="flex items-center justify-between">
+            <h3 class="card-title text-lg">Radiografía</h3>
+            <div class="join">
+              <button class="btn btn-sm join-item" type="button">−</button>
+              <button class="btn btn-sm join-item" type="button">100%</button>
+              <button class="btn btn-sm join-item" type="button">+</button>
+            </div>
+          </div>
+
+          <div class="rounded-2xl bg-base-200 border border-base-300 overflow-hidden">
+            <div class="aspect-[4/5] sm:aspect-[4/4] grid place-items-center">
+              <img id="previewImage" class="max-h-full max-w-full hidden rounded-xl object-contain" alt="Vista previa de radiografía" />
+              <div id="placeholderText" class="text-center p-6">
+                <p class="font-semibold">Aún no hay imagen</p>
+                <p class="text-sm opacity-70">Cuando cargues una radiografía, aparecerá aquí.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-2">
+            <div class="rounded-2xl bg-base-200 border border-base-300 p-3">
+              <p class="text-xs opacity-70">Calidad</p>
+              <p id="calidadValor" class="font-semibold">—</p>
+            </div>
+            <div class="rounded-2xl bg-base-200 border border-base-300 p-3">
+              <p class="text-xs opacity-70">Inferencia</p>
+              <p id="inferenciaValor" class="font-semibold">—</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-6 card bg-base-100 rounded-2xl soft-shadow">
+        <div class="card-body gap-4">
+          <div>
+            <h3 class="card-title text-lg">Resultados del análisis</h3>
+            <p class="text-sm opacity-70">Predicciones principales generadas automáticamente por ambos modelos.</p>
+          </div>
+
+          <div class="space-y-4">
+
+            <div class="rounded-2xl bg-base-200 border border-base-300 p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs opacity-70">Modelo</p>
+                  <p class="font-semibold">Patrones</p>
+                </div>
+                <span class="badge badge-primary badge-outline">Modelo 1</span>
+              </div>
+
+              <div class="mt-4 space-y-3">
+                <div class="rounded-2xl bg-base-100 border border-base-300 p-3">
+                  <div class="flex items-center justify-between">
+                    <p class="font-semibold">Predicción #1</p>
+                    <p id="patterns_pred1_prob" class="font-mono text-sm">—</p>
+                  </div>
+                  <div class="pt-2 flex flex-wrap items-center gap-2">
+                    <span id="patterns_pred1_label" class="badge badge-primary">—</span>
+                    <span class="text-xs opacity-70">Probabilidad</span>
+                  </div>
+                  <progress id="patterns_progress1" class="progress progress-primary w-full mt-2" value="0" max="100"></progress>
+                </div>
+
+                <div class="rounded-2xl bg-base-100 border border-base-300 p-3">
+                  <div class="flex items-center justify-between">
+                    <p class="font-semibold">Predicción #2</p>
+                    <p id="patterns_pred2_prob" class="font-mono text-sm">—</p>
+                  </div>
+                  <div class="pt-2 flex flex-wrap items-center gap-2">
+                    <span id="patterns_pred2_label" class="badge badge-ghost">—</span>
+                    <span class="text-xs opacity-70">Probabilidad</span>
+                  </div>
+                  <progress id="patterns_progress2" class="progress w-full mt-2" value="0" max="100"></progress>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-2xl bg-base-200 border border-base-300 p-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs opacity-70">Modelo</p>
+                  <p class="font-semibold">Enfermedades</p>
+                </div>
+                <span class="badge badge-secondary badge-outline">Modelo 2</span>
+              </div>
+
+              <div class="mt-4 space-y-3">
+                <div class="rounded-2xl bg-base-100 border border-base-300 p-3">
+                  <div class="flex items-center justify-between">
+                    <p class="font-semibold">Predicción #1</p>
+                    <p id="diseases_pred1_prob" class="font-mono text-sm">—</p>
+                  </div>
+                  <div class="pt-2 flex flex-wrap items-center gap-2">
+                    <span id="diseases_pred1_label" class="badge badge-secondary">—</span>
+                    <span class="text-xs opacity-70">Probabilidad</span>
+                  </div>
+                  <progress id="diseases_progress1" class="progress progress-secondary w-full mt-2" value="0" max="100"></progress>
+                </div>
+
+                <div class="rounded-2xl bg-base-100 border border-base-300 p-3">
+                  <div class="flex items-center justify-between">
+                    <p class="font-semibold">Predicción #2</p>
+                    <p id="diseases_pred2_prob" class="font-mono text-sm">—</p>
+                  </div>
+                  <div class="pt-2 flex flex-wrap items-center gap-2">
+                    <span id="diseases_pred2_label" class="badge badge-ghost">—</span>
+                    <span class="text-xs opacity-70">Probabilidad</span>
+                  </div>
+                  <progress id="diseases_progress2" class="progress w-full mt-2" value="0" max="100"></progress>
+                </div>
+              </div>
+            </div>
+
+            <div id="gradcamSection" class="rounded-2xl bg-base-200 border border-base-300 p-4 hidden">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <p class="text-xs opacity-70">Grad-CAM</p>
+                  <p class="font-semibold">Mapas de activación del modelo de patrones</p>
+                </div>
+              </div>
+              <div id="gradcamGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <div class="text-xs opacity-70 px-1">
+      Versión: v0.1 • Uso académico • Resultados probabilísticos
+    </div>
+  </main>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

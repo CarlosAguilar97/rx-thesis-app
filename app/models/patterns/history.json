@@ -1,0 +1,29 @@
+{
+  "train_loss": [
+    0.3310859773470008,
+    0.3099060053864724,
+    0.3002722348836973,
+    0.28957154984627026,
+    0.2789750885808328
+  ],
+  "val_loss": [
+    0.31923597957406724,
+    0.31244931868144443,
+    0.31473271557262966,
+    0.3040940263441631,
+    0.29531496635505133
+  ],
+  "labels": [
+    "alveolar_pattern",
+    "cardiomegaly",
+    "hyperlucency",
+    "interstitial_pattern",
+    "mediastinal_shift",
+    "nodular_density",
+    "pleural_effusion",
+    "pleural_thickening",
+    "reticular_pattern",
+    "volume_loss"
+  ],
+  "img_size": 224
+}
