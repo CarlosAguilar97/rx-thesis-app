@@ -50,7 +50,7 @@ function limpiarVista() {
   const preview = document.getElementById("previewImage");
   const placeholder = document.getElementById("placeholderText");
   const estado = document.getElementById("estadoSistema");
-  const originalDescription = document.getElementById("originalDescription");
+  const originalDescription = document.getElementById("originalDescription").value;
 
  
 
@@ -112,7 +112,7 @@ async function analizarImagen() {
 
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("original_description", originalDescription);
+  formData.append("original_description", originalDescription.value);
 
 
   try {
