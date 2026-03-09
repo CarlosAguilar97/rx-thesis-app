@@ -62,7 +62,7 @@ function limpiarVista() {
 
   document.getElementById("calidadValor").textContent = "—";
   document.getElementById("inferenciaValor").textContent = "—";
-  document.getElementById("originalDescription").textContent = "—";
+  document.getElementById("originalDescription").value = "";
   setPrediction("patterns", "—", null, "—", null);
   setPrediction("diseases", "—", null, "—", null);
   renderGradcams(null);
@@ -114,6 +114,11 @@ async function analizarImagen() {
   formData.append("file", file);
   formData.append("original_description", originalDescription);
 
+  console.log("Valor que se enviará:", originalDescription);
+
+  for (let pair of formData.entries()) {
+    console.log(pair[0], pair[1]);
+  }
 
   try {
     const response = await fetch("/analyze", {
