@@ -1,19 +1,11 @@
-# Servidor y API
 fastapi
 uvicorn[standard]
 python-multipart
 pydantic
 python-dotenv
-
-# Base de datos
 libsql
-
-# IA y Procesamiento de Tensores
-torch
-torchvision
-torch-directml        <-- CRÍTICO: Para usar tu RTX 5060 Ti con DirectML
-
-# Procesamiento de Imagen y Datos
-opencv-python
+torch --index-url https://download.pytorch.org/whl/cpu
+torchvision --index-url https://download.pytorch.org/whl/cpu
+opencv-python-headless  # <--- IMPORTANTE: En servidores se usa 'headless'
 pillow
 numpy

@@ -3,14 +3,24 @@ from io import BytesIO
 from pathlib import Path
 
 import torch
-import torch_directml
 import torch.nn as nn
 import numpy as np
 import cv2
 from torchvision import transforms, models
 from PIL import Image
 
-# --- CONFIGURACIÓN ---
+# --- CONFIGURACIÓN DE DISPOSITIVO HÍBRIDO (LOCAL vs NUBE) ---
+try:
+    import torch_directml
+    # Intentamos usar DirectML si estamos en tu Windows con la RTX 5060 Ti
+    DEVICE = torch_directml.device()
+    print("🚀 Hardware detected: Usando GPU local mediante DirectML")
+except (ImportError, RuntimeError):
+    # Si falla (como en Render/Linux), usamos CPU por defecto
+    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"☁️ Environment detected: Usando {DEVICE}")
+
+# --- RESTO DE CONFIGURACIÓN ---
 DISEASES = [
     'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration',
     'Mass', 'Nodule', 'Pneumonia', 'Pneumothorax',
@@ -32,35 +42,32 @@ DESC_CLINICA = {
 }
 
 IMG_SIZE = 512
-DEVICE = torch_directml.device() # Optimizado para tu RTX 5060 Ti
 MODEL_PATH = Path(__file__).resolve().parent / "modelo_chest_ray_limpio.pth"
 
-# --- UTILIDADES DE IMAGEN ---
+# --- FUNCIONES DE APOYO ---
+
 def to_base64(image):
     buffered = BytesIO()
     image.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-# --- CONSTRUCCIÓN DEL MODELO ---
 def build_model():
     model = models.densenet121(weights=None)
     model.features.conv0 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
     model.classifier = nn.Linear(model.classifier.in_features, len(DISEASES))
     
-    # Carga segura para DirectML y pesos locales
+    # Carga segura: Siempre a CPU primero para evitar conflictos de hardware al cargar
     state_dict = torch.load(MODEL_PATH, map_location='cpu', weights_only=False)
     model.load_state_dict(state_dict)
     return model.to(DEVICE).eval()
 
 MODEL = build_model()
 
-# Normalización exacta del entrenamiento
 transform = transforms.Compose([
     transforms.Resize((IMG_SIZE, IMG_SIZE)),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485], std=[0.229])
 ])
-
 # --- GENERADOR DE INFORME DINÁMICO ---
 def generar_reporte_dinamico(top_results, heatmap):
     # Lógica de lateralidad automática
