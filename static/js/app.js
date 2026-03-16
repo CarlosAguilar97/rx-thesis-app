@@ -50,7 +50,7 @@ function limpiarVista() {
   const preview = document.getElementById("previewImage");
   const placeholder = document.getElementById("placeholderText");
   const estado = document.getElementById("estadoSistema");
-  const originalDescription = document.getElementById("originalDescription");
+  const originalDescription = document.getElementById("originalDescription").value;
 
  
 
@@ -62,7 +62,7 @@ function limpiarVista() {
 
   document.getElementById("calidadValor").textContent = "—";
   document.getElementById("inferenciaValor").textContent = "—";
-  document.getElementById("originalDescription").textContent = "—";
+  document.getElementById("originalDescription").value = "";
   setPrediction("patterns", "—", null, "—", null);
   setPrediction("diseases", "—", null, "—", null);
   renderGradcams(null);
@@ -78,14 +78,14 @@ async function analizarImagen() {
   const placeholder = document.getElementById("placeholderText");
   const inferenciaValor = document.getElementById("inferenciaValor");
   const calidadValor = document.getElementById("calidadValor");
-  const originalDescription = document.getElementById("originalDescription");
+  const originalDescription = document.getElementById("originalDescription").value;
 
   if (!fileInput.files.length) {
     alert("Selecciona una imagen");
     return;
   }
 
-  if (originalDescription.value.length === 0) {
+  if (originalDescription.length === 0) {
     alert("Debe escribir la descripción original de la radiografía.");
     return;
   }
@@ -114,6 +114,11 @@ async function analizarImagen() {
   formData.append("file", file);
   formData.append("original_description", originalDescription);
 
+  console.log("Valor que se enviará:", originalDescription);
+
+  for (let pair of formData.entries()) {
+    console.log(pair[0], pair[1]);
+  }
 
   try {
     const response = await fetch("/analyze", {
