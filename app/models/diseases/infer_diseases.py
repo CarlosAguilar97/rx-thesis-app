@@ -132,12 +132,13 @@ def infer_diseases(image_path: str):
     reporte_texto = generar_reporte_dinamico(topk, cam)
 
     return {
-        "pred1_label": topk[0][0],
-        "pred1_prob": float(topk[0][1]),
-        "pred2_label": topk[1][0] if len(topk) > 1 else None,
-        "pred2_prob": float(topk[1][1]) if len(topk) > 1 else None,
-        "probabilities": probabilities,
-        "positives": [{"label": l, "prob": float(p)} for l, p in ordered if p >= 0.20],
-        "report": reporte_texto,
-        "gradcam_images": [gradcam_b64],
-    }
+    "pred1_label": topk[0][0],
+    "pred1_prob": float(topk[0][1]),
+    "pred2_label": topk[1][0] if len(topk) > 1 else None,
+    "pred2_prob": float(topk[1][1]) if len(topk) > 1 else None,
+    "probabilities": probabilities,
+    "positives": positives,
+    # Cambiamos None por diccionarios vacíos para cumplir con el Schema
+    "report": {}, 
+    "gradcam_images": {}
+}
