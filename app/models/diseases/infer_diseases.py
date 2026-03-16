@@ -12,15 +12,13 @@ from PIL import Image
 # --- CONFIGURACIÓN DE DISPOSITIVO HÍBRIDO (LOCAL vs NUBE) ---
 try:
     import torch_directml
-    # Intentamos usar DirectML si estamos en tu Windows con la RTX 5060 Ti
     DEVICE = torch_directml.device()
     print("🚀 Hardware detected: Usando GPU local mediante DirectML")
 except (ImportError, RuntimeError):
-    # Si falla (como en Render/Linux), usamos CPU por defecto
     DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"☁️ Environment detected: Usando {DEVICE}")
 
-# --- RESTO DE CONFIGURACIÓN ---
+# --- CONFIGURACIÓN ---
 DISEASES = [
     'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration',
     'Mass', 'Nodule', 'Pneumonia', 'Pneumothorax',
@@ -56,9 +54,13 @@ def build_model():
     model.features.conv0 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
     model.classifier = nn.Linear(model.classifier.in_features, len(DISEASES))
     
-    # Carga segura: Siempre a CPU primero para evitar conflictos de hardware al cargar
-    state_dict = torch.load(MODEL_PATH, map_location='cpu', weights_only=False)
-    model.load_state_dict(state_dict)
+    # Carga segura: Siempre a CPU primero para evitar conflictos
+    if MODEL_PATH.exists():
+        state_dict = torch.load(MODEL_PATH, map_location='cpu', weights_only=False)
+        model.load_state_dict(state_dict)
+    else:
+        print(f"⚠️ Alerta: No se encontró el archivo de pesos en {MODEL_PATH}")
+        
     return model.to(DEVICE).eval()
 
 MODEL = build_model()
@@ -68,9 +70,9 @@ transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485], std=[0.229])
 ])
+
 # --- GENERADOR DE INFORME DINÁMICO ---
 def generar_reporte_dinamico(top_results, heatmap):
-    # Lógica de lateralidad automática
     mitad = heatmap.shape[1] // 2
     lado = " IZQUIERDO" if np.sum(heatmap[:, :mitad]) > np.sum(heatmap[:, mitad:]) else " DERECHO"
     
@@ -78,7 +80,7 @@ def generar_reporte_dinamico(top_results, heatmap):
     for i, (name, prob) in enumerate(top_results):
         adj = "Extensa" if prob > 0.40 else "Moderada" if prob > 0.20 else "Discreta"
         desc = DESC_CLINICA.get(name, f"signos de {name.lower()}")
-        ubicacion = lado if i == 0 else "" # Solo al hallazgo principal
+        ubicacion = lado if i == 0 else "" 
         cuerpo += f"* {adj} {desc}{ubicacion}.\n"
 
     cuerpo += "\nResto de campos pulmonares sin alteraciones evidentes."
@@ -90,7 +92,7 @@ def infer_diseases(image_path: str):
     w_orig, h_orig = raw_img.size
     img_tensor = transform(raw_img).unsqueeze(0).to(DEVICE)
 
-    # Hook para Grad-CAM manual (evita errores de memoria inplace)
+    # Hook para Grad-CAM manual
     activations = []
     def hook_fn(m, i, o): activations.append(o.detach())
     handle = MODEL.features.norm5.register_forward_hook(hook_fn)
@@ -101,12 +103,19 @@ def infer_diseases(image_path: str):
     
     handle.remove()
 
-    # Procesar resultados
+    # 1. Procesar probabilidades
     probabilities = {DISEASES[i]: float(probs[i]) for i in range(len(DISEASES))}
     ordered = sorted(probabilities.items(), key=lambda x: x[1], reverse=True)
-    topk = ordered[:3] # Tomamos el Top 3 para el reporte
+    topk = ordered[:3] 
 
-    # Generar Heatmap para el hallazgo principal (Top 1)
+    # 2. Definir variable 'positives' (LO QUE FALTABA)
+    positives = [
+        {"label": label, "prob": float(prob)}
+        for label, prob in ordered
+        if prob >= 0.20
+    ]
+
+    # 3. Generar Heatmap (Grad-CAM)
     target_idx = DISEASES.index(topk[0][0])
     weights = MODEL.classifier.weight[target_idx, :].detach()
     act = activations[0].squeeze(0)
@@ -118,27 +127,27 @@ def infer_diseases(image_path: str):
     cam = torch.clamp(cam, min=0).cpu().numpy()
     cam = (cam - np.min(cam)) / (np.max(cam) + 1e-10)
 
-    # Crear imagen Grad-CAM para el frontend
+    # Convertir Heatmap a Base64
     heatmap_res = cv2.resize(cam, (w_orig, h_orig))
     heatmap_color = cv2.applyColorMap(np.uint8(255 * heatmap_res), cv2.COLORMAP_JET)
     img_rgb = cv2.cvtColor(np.array(raw_img.convert('RGB')), cv2.COLOR_RGB2BGR)
     overlay = cv2.addWeighted(img_rgb, 0.6, heatmap_color, 0.4, 0)
-    
-    # Convertir a PIL y luego Base64
     overlay_pil = Image.fromarray(cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB))
     gradcam_b64 = to_base64(overlay_pil)
 
-    # Generar el reporte dinámico
+    # 4. Generar el reporte
     reporte_texto = generar_reporte_dinamico(topk, cam)
 
+    # RETORNO FINAL ADAPTADO AL SCHEMA
     return {
-    "pred1_label": topk[0][0],
-    "pred1_prob": float(topk[0][1]),
-    "pred2_label": topk[1][0] if len(topk) > 1 else None,
-    "pred2_prob": float(topk[1][1]) if len(topk) > 1 else None,
-    "probabilities": probabilities,
-    "positives": positives,
-    # Cambiamos None por diccionarios vacíos para cumplir con el Schema
-    "report": {}, 
-    "gradcam_images": {}
-}
+        "pred1_label": topk[0][0],
+        "pred1_prob": float(topk[0][1]),
+        "pred2_label": topk[1][0] if len(topk) > 1 else None,
+        "pred2_prob": float(topk[1][1]) if len(topk) > 1 else None,
+        "probabilities": probabilities,
+        "positives": positives,
+        # Devolvemos diccionarios vacíos para cumplir con el contrato de Pydantic
+        # y no generar errores de validación en Render
+        "report": {}, 
+        "gradcam_images": {}
+    }
